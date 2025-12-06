@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Comprehensive Mean & MPS Generator</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+ body{font-family:Arial;background:#f5f6fa;padding:30px;}
+ .container{max-width:850px;margin:auto;background:#fff;padding:25px;border-radius:12px;box-shadow:0 4px 15px rgba(0,0,0,0.1);}
+ h2{text-align:center;color:#2c3e50;margin-bottom:20px;}
+ textarea,input{width:100%;padding:12px;border-radius:8px;border:1px solid #ccc;margin-top:8px;font-size:15px;}
+ button{padding:12px 20px;margin:8px 5px;background:#2980b9;color:#fff;border:none;border-radius:8px;cursor:pointer;}
+ button:hover{background:#1f6691;}
+ .result-box{background:#ecf0f1;margin-top:20px;padding:15px;border-radius:10px;}
+ #chartContainer{margin-top:30px;}
+</style>
+</head>
+<body>
+<div class="container">
+<h2> Mean & MPS Calculator</h2>
+
+<label>Enter Student Scores (comma-separated):</label>
+<textarea id="scores" rows="4" placeholder="85, 90, 95"></textarea>
+
+<label>Total Number of Test Items:</label>
+<input type="number" id="items" placeholder="100" />
+
+<label>Optional: Weights (comma-separated, same count as scores)</label>
+<input id="weights" placeholder="Example: 1,1,1 or 2,1,3" />
+
+<input type="file" id="csvUpload" accept=".csv,.xlsx" />
+
+<div>
+  <button onclick="compute()">Compute</button>
+  <button onclick="downloadPDF()">Export PDF</button>
+  <button onclick="downloadExcel()">Export Excel</button>
+  <button onclick="saveScores()">Save Data</button>
+  <button onclick="loadScores()">Load Saved</button>
+</div>
+
+<div class="result-box">
+ <p><b>Mean:</b> <span id="meanOutput">--</span></p>
+ <p><b>Weighted Mean:</b> <span id="wmeanOutput">--</span></p>
+ <p><b>MPS:</b> <span id="mpsOutput">--</span></p>
+ <p><b>Total Students:</b> <span id="studCount">--</span></p>
+</div>
+
+<div id="chartContainer">
+ <canvas id="scoreChart"></canvas>
+</div>
+
+</div>
+<script>
+let chart;
+
+function compute(){
+ let raw=document.getElementById("scores").value;
+ let items=parseFloat(document.getElementById("items").value);
+ let weightsRaw=document.getElementById("weights").value;
+ if(!raw||!items){alert("Enter scores and total items.");return;}
+ let scores=raw.split(',').map(s=>parseFloat(s.trim())).filter(n=>!isNaN(n));
+ let weights=weightsRaw?weightsRaw.split(',').map(s=>parseFloat(s.trim())):Array(scores.length).fill(1);
+ let total=scores.reduce((a,b)=>a+b,0);
+ let mean=total/scores.length;
+ let wtotal=0,wsum=0;
+ scores.forEach((s,i)=>{wtotal+=s*weights[i];wsum+=weights[i];});
+ let wmean=wtotal/wsum;
+ let mps=(mean/items)*100;
+ document.getElementById("meanOutput").textContent=mean.toFixed(2);
+ document.getElementById("wmeanOutput").textContent=wmean.toFixed(2);
+ document.getElementById("mpsOutput").textContent=mps.toFixed(2)+"%";
+ document.getElementById("studCount").textContent=scores.length;
+ drawChart(scores);
+}
+
+function drawChart(scores){
+ if(chart) chart.destroy();
+ let ctx=document.getElementById("scoreChart").getContext("2d");
+ chart=new Chart(ctx,{
+   type:'bar',
+   data:{labels:scores.map((_,i)=>"S"+(i+1)),datasets:[{label:'Scores',data:scores}]} 
+ });
+}
+
+function downloadExcel(){
+ let wb=XLSX.utils.book_new();
+ let data=[["Mean",document.getElementById("meanOutput").textContent],["MPS",document.getElementById("mpsOutput").textContent]];
+ let ws=XLSX.utils.aoa_to_sheet(data);
+ XLSX.utils.book_append_sheet(wb,ws,"Results");
+ XLSX.writeFile(wb,"Mean_MPS_Report.xlsx");
+}
+
+function saveScores(){
+ localStorage.setItem("scores",document.getElementById("scores").value);
+ localStorage.setItem("items",document.getElementById("items").value);
+ alert("Saved!");
+}
+function loadScores(){
+ document.getElementById("scores").value=localStorage.getItem("scores")||"";
+ document.getElementById("items").value=localStorage.getItem("items")||"";
+}
+
+// PDF Export
+function downloadPDF(){
+ const element=document.querySelector('.result-box').innerText;
+ const blob=new Blob([element],{type:'text/plain'});
+ const link=document.createElement('a');
+ link.href=URL.createObjectURL(blob);
+ link.download="Mean_MPS_Report.txt";
+ link.click();
+}
+</script>
+
+</body>
+</html>
